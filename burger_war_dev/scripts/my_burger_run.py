@@ -58,7 +58,7 @@ class MyRunBot(object):
             self.mom_gre_y = 0
             self.mom_blu_x = 0
             self.mom_blu_y = 0
-            self.speed = 0.5
+            self.speed = 0.2
             self.state = "go"
             self.back_start_time = 0
             self.blue_count = 0
@@ -139,6 +139,8 @@ class MyRunBot(object):
                 linear_x = 0
                 anglular_z = -1.5
 
+            print self.state
+
             twist.linear.x = linear_x; twist.linear.y = 0; twist.linear.z = 0
             twist.angular.x = 0; twist.angular.y = 0; twist.angular.z = anglular_z
 
@@ -160,19 +162,20 @@ class MyRunBot(object):
             self.img = self.bridge.imgmsg_to_cv2(data, "bgr8")
         except CvBridgeError as e:
             rospy.logerr(e)
+
         cv2.imshow("Image window", self.img)
         cv2.waitKey(1)
         hsv = cv2.cvtColor(self.img, cv2.COLOR_BGR2HSV)
-        lower_red = np.array([-30, 100, 50]) # red
+        lower_red = np.array([-40, 100, 0]) # red
         upper_red = np.array([20, 255, 255]) # red
-        lower_yel = np.array([30, 100, 50]) # yellow
-        upper_yel = np.array([50, 255, 255]) # yellow
-        lower_blu = np.array([120, 100, 50]) # blue
-        upper_blu = np.array([140, 255, 255]) # blue
-        lower_gre = np.array([40, 100, 50]) # green
-        upper_gre = np.array([60, 255, 255]) # green
-        lower_gra = np.array([0, -20, 80]) #  gray
-        upper_gra = np.array([255, 50, 200]) # gray
+        lower_yel = np.array([20, 150, 0]) # yellow
+        upper_yel = np.array([40, 255, 255]) # yellow
+        lower_blu = np.array([100, 150, 0]) # blue
+        upper_blu = np.array([180, 255, 255]) # blue
+        lower_gre = np.array([40, 80, 0]) # green
+        upper_gre = np.array([80, 255, 255]) # green
+        lower_gra = np.array([0, 0, 100]) #  gray
+        upper_gra = np.array([255, 100, 255]) # gray
         self.target_flag = False #何かしらのターゲットを見つけたらTrue
 
         #moment      
@@ -190,6 +193,8 @@ class MyRunBot(object):
             whole_area = bin_img_red.size
             white_area = cv2.countNonZero(bin_img_red)
             red_area_per = 100 * white_area/whole_area
+            if red_area_per > 1:
+                self.target_flag = True
         else:
             self.mom_red_x = -1
             self.mom_red_y = -1
@@ -255,6 +260,8 @@ class MyRunBot(object):
         white_area = cv2.countNonZero(bin_img_gra)
         gra_area_per = 100 * white_area/whole_area
         # print("gray area%f",gra_area_per)
+        #cv2.imshow("bin gra window", bin_img_gra)
+
 
         #壁 or 的の面積が大きくなったらバック
         if gra_area_per > 80 or gra_area_per < 3 or blu_area_per > 8 or gre_area_per > 8:
@@ -262,7 +269,7 @@ class MyRunBot(object):
         else:
             #スタック対策でランダムにバック
             xr_int = random.randint(0,10)             
-            if (xr_int == 0 and time.time() - self.back_start_time > 40):
+            if (xr_int == 0 and time.time() - self.back_start_time > 10):
                 self.back_start_time = time.time()
 
         # 移動状態
@@ -274,11 +281,9 @@ class MyRunBot(object):
             else:
                 self.state = "turnL"
         elif (time.time() - self.back_start_time > 8):
-            self.state = "go"
+            self.state = "go"      
 
-        print self.state        
-
-        cv2.imshow("bin gra window", bin_img_gra)
+        
         '''
           # 先程二値化した画像をマスク画像としてBGR画像を切り抜き
         processed_image = cv2.bitwise_and(self.img, self.img, mask=bin_img_gre)
